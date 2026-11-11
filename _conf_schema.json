@@ -1,8 +1,17 @@
 {
-    "懒大猫牛逼": {
-        "description": "懒大猫牛逼",
-        "type": "text",
-        "default": "懒大猫实际上太牛逼了",
-        "hint": "懒大猫牛逼克拉斯"
+    "艾特仍可唤醒": {
+        "description": "艾特仍可唤醒",
+        "type": "bool",
+        "default": true,
+        "hint": "闭嘴后艾特仍可唤醒"
+    },
+    "艾特后结束闭嘴": {
+        "description": "艾特后结束闭嘴",
+        "type": "bool",
+        "default": true,
+        "hint": "闭嘴时被艾特后立即结束闭嘴",
+        "condition": {
+            "艾特仍可唤醒": true
+        }
     }
 }
