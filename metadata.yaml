@@ -1,6 +1,6 @@
 name: Llm闭嘴
 desc: 给Llm主动闭嘴的插件
-version: v1.1.0
+version: v1.2.0
 author: 懒大猫
 repo: https://github.com/landamao/ldmpl_shut_up
 support_platforms:

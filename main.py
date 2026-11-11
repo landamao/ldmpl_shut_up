@@ -7,33 +7,28 @@ from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass, fields
 from aiocqhttp import CQHttp, ApiNotAvailable
-from astrbot.api.all import Star, Context, logger, filter, StarTools, At, Platform
-from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import AiocqhttpMessageEvent
 
-h = "屎上最难维护"
+from astrbot.core.agent.message import TextPart
+from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import AiocqhttpMessageEvent
+from astrbot.api.all import Star, Context, logger, filter, StarTools, At, Platform, ProviderRequest
+
+h = "屎上最牛逼"
 
 bots:dict[str, CQHttp] = {}
 实例:"Llm闭嘴 | None" = None
 
 async def 设置群昵称(self_id:str, group_id:str, card:str, sleep:bool=True) -> bool:
-    try:
-        if not (bot := bots.get(self_id)):raise RuntimeError("无可用bot实例")
-        return (((sleep and (await asyncio.sleep(random.randint(20, 40)/10) or True)) or await asyncio.sleep(random.randint(4, 8)/10)) and False) or (await bot.call_action(action="set_group_card", group_id=group_id, user_id=self_id, card=card)) or True
-    except ApiNotAvailable as e:
-        logger.error(f"设置群昵称失败，bot={self_id}已断开连接：{e}", exc_info=True)
-        del bots[self_id]
+    try:return ((bot := bots.get(self_id)) and ((((sleep and (await asyncio.sleep(random.randint(20, 40)/10) or True)) or await asyncio.sleep(random.randint(4, 8)/10)) and False) or (await bot.call_action(action="set_group_card", group_id=group_id, user_id=self_id, card=card)) or True)) or (logger.warning(f"bot={self_id}，设置群昵称失败：无可用bot实例") and False)
+    except ApiNotAvailable as e:(logger.error(f"设置群昵称失败，bot={self_id}已断开连接：{e}", exc_info=True) is h) or bots.pop(self_id, None)
     except Exception as e:logger.warning(f"bot={self_id}，设置群昵称失败：{e}", exc_info=True)
     return False
 
 async def 获取群昵称(self_id:str, group_id:str, sleep:bool=True) -> tuple[str|None, str|None]:
     """顺序为nickname，card"""
     try:
-        if not (bot := bots.get(self_id)):raise RuntimeError("无可用bot实例")
-        info = (((sleep and (await asyncio.sleep(random.randint(10, 20)/10) or True)) or (await asyncio.sleep(random.randint(2, 4)/10))) and False ) or await bot.call_action(action="get_group_member_info", group_id=group_id, user_id=self_id)
+        info = ((bot := bots.get(self_id)) and ((((sleep and (await asyncio.sleep(random.randint(10, 20)/10) or True)) or (await asyncio.sleep(random.randint(2, 4)/10))) and False ) or await bot.call_action(action="get_group_member_info", group_id=group_id, user_id=self_id))) or ((logger.warning(f"bot={self_id}获取群昵称失败：无可用bot实例") is h) or {})
         return info.get("nickname"), info.get("card")
-    except ApiNotAvailable as e:
-        logger.error(f"获取群昵称失败，bot={self_id}已断开连接：{e}", exc_info=True)
-        del bots[self_id]
+    except ApiNotAvailable as e:(logger.error(f"获取群昵称失败，bot={self_id}已断开连接：{e}", exc_info=True) is h) or bots.pop(self_id, None)
     except Exception as e:logger.warning(f"bot={self_id}获取群昵称失败：{e}", exc_info=True)
     return None, None
 
@@ -73,13 +68,13 @@ class 闭嘴信息:
         self.昵称, self.群昵称 = (self.OneBot平台 and await 获取群昵称(self_id=self.自己QQ, group_id=self.群号, sleep=sleep)) or (None, None)
         return self.OneBot平台 and await self.更新群昵称(sleep=sleep, ps=ps)
 
-    async def 更新群昵称(self, reset:bool=False, sleep:bool=True, ps=True) -> bool:return self.OneBot平台 and ((ps and await self.初始化群信息(sleep=sleep, ps=False)) if self.群昵称 is None else (await 设置群昵称(self_id=self.自己QQ, group_id=self.群号, card=(((reset or self.已结束) and self.群昵称 + " ") or f"{self.群昵称 or self.昵称 or ''}（闭嘴中，剩余{self.剩余时间}）").strip(), sleep=sleep)))
+    async def 更新群昵称(self, reset:bool=False, sleep:bool=True, ps=True) -> bool:return (self.OneBot平台 and ((ps and await self.初始化群信息(sleep=sleep, ps=False)) if self.群昵称 is None else (await 设置群昵称(self_id=self.自己QQ, group_id=self.群号, card=(((reset or self.已结束) and self.群昵称 + " ") or f"{self.群昵称 or self.昵称 or ''}（闭嘴中，剩余{self.剩余时间}）").strip(), sleep=sleep)))) or (not self.OneBot平台)
 
 class Data:
     def __init__(self, data_dir: Path | str):
         self.data_path, self.任务 = Path(data_dir) / "data.json", None
         self.data:dict[str, dict[str,闭嘴信息]] = (self.data_path.parent.mkdir(parents=True, exist_ok=True) and False ) or defaultdict(dict)
-        raw = (self.data_path.exists() or (self.data_path.write_text(data="{}", encoding="utf-8") and False) or {}) and json.loads(self.data_path.read_text(encoding="utf-8"))
+        raw = (self.data_path.exists() or (self.data_path.write_text(data="{}", encoding="utf-8") and False) or {}) and json.loads(self.data_path.read_text(encoding="utf-8").strip() or "{}")
         for sid, groups in raw.items():
             for gid, d in groups.items():
                 if info := 闭嘴信息.from_dict(d):self.data[sid][gid] = info
@@ -111,16 +106,14 @@ class Data:
     async def 更新信息(self, sleep=True, 更新昵称=True):
         data, to_del, to_up = self.data, [], []
         all((((info.已结束 and (to_del.append((self_id, gid)) or True)) or to_up.append(info)) or True) for self_id, self_info in data.items() for gid, info in self_info.items())
-        for self_id, gid in to_del:
-            if await data[self_id][gid].更新群昵称(reset=True, sleep=sleep):del data[self_id][gid]
+        [(await data[self_id][gid].更新群昵称(reset=True, sleep=sleep)) and data[self_id].pop(gid, None) for self_id, gid in to_del]
         ((更新昵称 and [await info.更新群昵称(sleep=sleep) for info in to_up]) is h) or self.save()
 
     async def 启动清理(self):
         async def 后台清理循环():
             try:
                 while True:
-                    await asyncio.sleep(random.randint(120, 300))
-                    try:await self.更新信息()
+                    try:(await asyncio.sleep(random.randint(120, 300)) is h) or (await self.更新信息())
                     except Exception as e:logger.error(f"更新信息出错：{e}", exc_info=True)
             except asyncio.CancelledError:pass
         if self.清理运行中:return self.任务
@@ -164,7 +157,12 @@ class Llm闭嘴(Star):
     @filter.on_waiting_llm_request(priority=sys.maxsize)
     async def llm队列时(self, event: AiocqhttpMessageEvent):
         """进入llm请求队列时拦截闭嘴的群（唤醒后）"""
-        try:(event.get_group_id() and self.data.闭嘴中(event)) and (((self.艾特仍可唤醒 and any(isinstance(i, At) and str(i.qq) == event.get_self_id() for i in event.get_messages())) and ((self.艾特后结束闭嘴 and (await self.data.解除闭嘴(event))) or True)) or event.stop_event())
+        try:(event.get_group_id() and self.data.闭嘴中(event)) and (((self.艾特仍可唤醒 and any(isinstance(i, At) and str(i.qq) == event.get_self_id() for i in event.get_messages())) and (event.set_extra(h, True) or True) and ((self.艾特后结束闭嘴 and (await self.data.解除闭嘴(event))) or True)) or event.stop_event())
+        except Exception as e:logger.error(f"处理失败：{e}", exc_info=True)
+
+    @filter.on_llm_request()
+    async def llm请求前(self, event: AiocqhttpMessageEvent, req: ProviderRequest):
+        try:event.get_extra(h) and req.leading_user_content_parts.append(TextPart(text="<system_reminder>由插件配置，闭嘴因被用户艾特而中断</system_reminder>"))
         except Exception as e:logger.error(f"处理失败：{e}", exc_info=True)
 
     @filter.llm_tool(name="shut_up")
