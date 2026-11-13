@@ -3,7 +3,33 @@ import time
 import json
 import random
 import asyncio
-from pathlib import Path
+from pathlib import Path as _Path
+
+class Path(_Path):
+
+    def write_text(self, data: str, encoding: str | None = 'utf-8', errors: str | None = None, newline: str | None = None):
+        path = self.resolve()
+        tmp = path.with_name(path.name + ".tmp")
+        with open(tmp, "w", encoding=encoding, errors=errors, newline=newline) as f:
+            n = f.write(data)
+        tmp.replace(path)
+        return n
+
+    def read_text(self, encoding: str | None = 'utf-8-sig', errors: str | None = None, newline: str | None = None):
+        with open(self.resolve(), "r", encoding=encoding, errors=errors, newline=newline) as f:
+            return f.read()
+
+    def write_json(self, data, encoding='utf-8', ensure_ascii=False, indent=4, default=None, **kwargs):
+        path = self.resolve()
+        tmp = path.with_name(path.name + ".tmp")
+        with open(tmp, "w", encoding=encoding) as f:
+            json.dump(data, f, ensure_ascii=ensure_ascii, indent=indent, default=default, **kwargs)
+        tmp.replace(path)
+
+    def read_json(self, encoding='utf-8-sig', **kwargs):
+        with open(self.resolve(), "r", encoding=encoding) as f:
+            return json.load(f, **kwargs)
+
 from collections import defaultdict
 from dataclasses import dataclass, fields
 from aiocqhttp import CQHttp, ApiNotAvailable
@@ -74,12 +100,12 @@ class Data:
     def __init__(self, data_dir: Path | str):
         self.data_path, self.任务 = Path(data_dir) / "data.json", None
         self.data:dict[str, dict[str,闭嘴信息]] = (self.data_path.parent.mkdir(parents=True, exist_ok=True) and False ) or defaultdict(dict)
-        raw = (self.data_path.exists() or (self.data_path.write_text(data="{}", encoding="utf-8") and False) or {}) and json.loads(self.data_path.read_text(encoding="utf-8").strip() or "{}")
+        raw = (self.data_path.exists() or (self.data_path.write_text(data="{}") and False) or {}) and json.loads(self.data_path.read_text().strip() or "{}")
         for sid, groups in raw.items():
             for gid, d in groups.items():
                 if info := 闭嘴信息.from_dict(d):self.data[sid][gid] = info
 
-    def save(self):self.data_path.write_text(data=json.dumps(self.data, indent=4, ensure_ascii=False, default=dict), encoding="utf-8")
+    def save(self):self.data_path.write_json(self.data, default=dict)
 
     async def 加入闭嘴(self, event: AiocqhttpMessageEvent, end_time:float|int) -> 闭嘴信息:
         sid, gid = event.get_self_id(), event.get_group_id()
